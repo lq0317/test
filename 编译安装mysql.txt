@@ -1,0 +1,50 @@
+﻿mysq5.5以上版本编译安装（需要用到cmake编译）
+安装包选择
+cmake-3.8.2.tar.gz mysql-5.5.32.tar.gz
+yum install ncurses-devel libaio-devel -y
+			cmake安装
+[root@10-19-20-181 scripts]# tar xf cmake-3.8.2.tar.gz 
+[root@10-19-20-181 scripts]# cd cmake-3.8.2
+[root@10-19-20-181 scripts]# ./configure 
+[root@10-19-20-181 scripts]# gmake
+[root@10-19-20-181 scripts]# gmake install
+[root@10-19-20-181 scripts]# echo $?（验证错误，返回0正确）
+            mysql安装
+[root@10-19-20-181 scripts]# groupadd mysql
+[root@10-19-20-181 scripts]# useradd mysql -s /sbin/nologin -M -g mysql
+[root@10-19-20-181 scripts]# tar xf mysql-5.5.32.tar.gz
+[root@10-19-20-181 scripts]# cd mysql-5.5.32.tar
+[root@10-19-20-181 scripts]# cmake . -DCMAKE_INSTALL_PREFIX=/opt/mysql-5.5.32 \
+-DMYSQL_DATADIR=/opt/mysql-5.5.32/data \
+-DMYSQL_UNIX_ADDR=/opt/mysql-5.5.32/tmp/mysql.sock \
+-DDEFAULT_CHARSET=utf8 \
+-DDEFAULT_COLLATION=utf8_general_ci \
+-DWITH_EXTRA_CHARSETS=all \
+-DWITH_INNOBASE_STORAGE_ENGINE=1 \
+-DWITH_FEDERATED_STORAGE_ENGINE=1 \
+-DWITH_BLACKHOLE_STORAGE_ENGINE=1 \
+-DWITHOUT_EXAMPLE_STORAGE_ENGINE=1 \
+-DWITH_ZLIB=bundled \
+-DWITH_SSL=bundled \
+-DENABLED_LOCAL_INFILE=1 \
+-DWITH_EMBEDDED_SERVER=1 \
+-DENABLE_DOWNLOADS=1 \
+-DWITH_DEBUG=0
+[root@10-19-20-181 scripts]# make
+[root@10-19-20-181 scripts]# makeinstall
+[root@10-19-20-181 scripts]# echo $? （返回0则安装正确）
+[root@10-19-20-181 scripts]# ln -s /opt/mysql-5.5.32/ /opt/mysql
+[root@10-19-20-181 scripts]# cp /opt/mysql-5.5.32/support-files/my-small.cnf /etc/my.cnf
+[root@10-19-20-181 scripts]# echo "export PATH=/opt/mysql-5.5.32/bin/:$PATH" >> /etc/profile
+[root@10-19-20-181 scripts]# source /etc/profile
+[root@10-19-20-181 scripts]# chown mysql.mysql /opt/mysql-5.5.32 -R
+[root@10-19-20-181 scripts]# chown 1777 /tmp/ -R (1是粘贴位)
+[root@10-19-20-181 scripts]# /opt/mysql-5.5.32/scripts/mysql_install_db --basedir=/opt/mysql-5.5.32/--datadir=/opt/mysql-5.5.32/data --user=mysql（初始化数据库）
+[root@10-19-20-181 scripts]# cp /opt/mysql-5.5.32/support-files/mysql.server /etc/init.d/mysqld
+[root@10-19-20-181 scripts]# /etc/init.d/mysqld start
+[root@10-19-20-181 scripts]# ss -nltp |grep 3306
+LISTEN     0      50                        *:3306                     *:*      users:(("mysqld",10046,10))
+[root@10-19-20-181 scripts]# netstat -aunltp |grep 3306
+tcp        0      0 0.0.0.0:3306                0.0.0.0:*                   LISTEN      10046/mysqld        
+[root@10-19-20-181 scripts]# 
+[root@10-19-20-181 scripts]# mysqladmin -uroot password

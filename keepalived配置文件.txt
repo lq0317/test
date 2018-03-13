@@ -1,0 +1,189 @@
+keepalived单实例主备实例配置 这种适用于nginx，如果是lvs的话通过keepalived代替
+ipvsadm管理lvs，都在配置文件配置
+#全局定义块
+global_defs {
+    # 邮件通知配置
+    notification_email {
+        email1
+        email2
+    }
+    notification_email_from email
+    smtp_server host
+    smtp_connect_timeout num
+
+    router_id 1    ## 标识本节点的字条串,通常为hostname
+}
+vrrp_instance VI_1 {
+    state MASTER
+    virtual_router_id 50 （不同的实例不一样）
+    interface eht0
+    priority 150   （优先级，大的为主）
+    advert_int 1	（高可用之间的间隔）
+    authentication {
+        auth_type PASS|AH
+        auth_pass 1111
+    }
+    virtual_ipaddress {  # Block limited to 20 IP addresses @IP
+        192.168.100.200/24
+    }
+}
+
+#全局定义块
+global_defs {
+    # 邮件通知配置
+    notification_email {
+        email1
+        email2
+    }
+    notification_email_from email
+    smtp_server host
+    smtp_connect_timeout num
+
+    router_id 2    ## 标识本节点的字条串,通常为hostname
+}
+vrrp_instance V1_1 {
+    state BACKUP
+    virtual_router_id 50 （不同的实例不一样）
+    interface eth0 
+    priority 100  （优先级，大的为主）
+    advert_int 1	（高可用之间的间隔）
+    authentication {
+        auth_type PASS|AH
+        auth_pass 1111
+    }
+    virtual_ipaddress {  # Block limited to 20 IP addresses @IP
+        10.0.0.10/24
+    }
+}
+
+多实例
+global_defs {
+    # 邮件通知配置
+    notification_email {
+        email1
+        email2
+    }
+    notification_email_from email
+    smtp_server host
+    smtp_connect_timeout num
+
+    router_id 2    ## 标识本节点的字条串,通常为hostname
+}
+vrrp_instance V1_1 {
+    state BACKUP
+    virtual_router_id 50 （不同的实例不一样）
+    interface eth0 
+    priority 100  （优先级，大的为主）
+    advert_int 1	（高可用之间的间隔）
+    authentication {
+        auth_type PASS|AH
+        auth_pass 1111
+    }
+vrrp_instance V1_2 {
+    state MASTER
+    virtual_router_id 52 （不同的实例不一样）
+    interface eth0 
+    priority 150  （优先级，大的为主）
+    advert_int 1	（高可用之间的间隔）
+    authentication {
+        auth_type PASS|AH
+        auth_pass 1111
+    }
+    virtual_ipaddress {  # Block limited to 20 IP addresses @IP
+        10.0.0.5/24
+    }
+}
+
+
+global_defs {
+    # 邮件通知配置
+    notification_email {
+        email1
+        email2
+    }
+    notification_email_from email
+    smtp_server host
+    smtp_connect_timeout num
+
+    router_id 2    ## 标识本节点的字条串,通常为hostname
+}
+vrrp_instance V1_1 {
+    state MASTER
+    virtual_router_id 50 （不同的实例不一样）
+    interface eth0 
+    priority 100  （优先级，大的为主）
+    advert_int 1	（高可用之间的间隔）
+    authentication {
+        auth_type PASS|AH
+        auth_pass 1111
+    }
+vrrp_instance V1_2 {
+    state BACKUP
+    virtual_router_id 52 （不同的实例不一样）
+    interface eth0 
+    priority 50  （优先级，大的为主）
+    advert_int 1	（高可用之间的间隔）
+    authentication {
+        auth_type PASS|AH
+        auth_pass 1111
+    }
+    virtual_ipaddress {  # Block limited to 20 IP addresses @IP
+        10.0.0.5/24
+    }
+}
+
+keepalived结合lvs配置
+在上面模块在添加下面的模块
+virtual_server IP Port | virtual_server fwmark int | virtual_server group string {
+  delay_loop <INT>：健康检查的时间间隔。
+  lb_argo rr|wrr|lc|wlc|lblc|sh|dh：LVS调度算法。
+  lb_kind NAT|DR|TUN：LVS模式。
+  persistence_timeout 360：持久化超时时间，单位是秒。默认是6分钟。
+  persistence_granularity：持久化连接的颗粒度。
+  protocol TCP|UDP|SCTP：4层协议。
+  ha_suspend：如果virtual server的IP地址没有设置，则不进行后端服务器的健康检查。
+  virtualhost <STRING>：为HTTP_GET和SSL_GET执行要检查的虚拟主机。如virtualhost www.felix.com
+  sorry_server <IPADDR> <PORT>：添加一个备用服务器。当所有的RS都故障时。
+  sorry_server_inhibit：将inhibit_on_failure指令应用于sorry_server指令。
+
+  alpha：在keepalived启动时，假设所有的RS都是down，以及健康检查是失败的。有助于防止启动时的误报。默认是禁用的。
+  omega：在keepalived终止时，会执行quorum_down指令所定义的脚本。
+
+  quorum <INT>：默认值1. 所有的存活的服务器的总的最小权重。
+  quorum_up <STRING>：当quorum增长到满足quorum所定义的值时，执行该脚本。
+  quorum_down <STRING>：当quorum减少到不满足quorum所定义的值时，执行该脚本。
+}
+real_server IP Port {              （多个根据你后端的服务器数量）
+  weight <INT>：给服务器指定权重。默认是1.
+  inhibit_on_failure：当服务器健康检查失败时，将其weight设置为0，而不是从Virtual Server中移除。
+  notify_up <STRING>：当服务器健康检查成功时，执行的脚本。
+  notify_down <STRING>：当服务器健康检查失败时，执行的脚本。
+  uthreshold <INT>：到这台服务器的最大连接数。
+  lthreshold <INT>：到这台服务器的最小连接数。
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

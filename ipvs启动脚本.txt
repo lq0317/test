@@ -1,0 +1,41 @@
+#!/bin/bash
+. /etc/init.d/functions
+VIP=192.168.100.200
+PORT=80
+RIP=(192.168.100.232
+	 1921.168.100.233	
+)
+
+start(){
+	ifconfig eth0:0 $VIP/24 up
+	route add -host $VIP dev eth0
+ipvsadm -C
+ipvsadm --set 30 5 60
+ipvsadm -A -t $VIP:$PORT -s rr -p 20
+for ((i=0;i<${#RIP[*]};i++))
+do
+ipvsadm -a -t $RIP:$PORT -r ${RIP[$i]}-g -w 1
+done
+stop(){
+ipvsadm -C
+ifconfig eth0:0 $VIP/24 down
+route dell -host $VIP dev eth0
+}
+case "$1" in
+	start）
+		start
+		echo "ipvs is started"
+	;;
+	stop)
+		stop
+		echo "ipvs is stoped"
+	;;
+	restart)
+	stop
+	echo "ipvs is stoped"
+	start
+	echo "ipvs is started"
+	;;
+	*)
+	echo "use:$0 {start|stop|restart}"
+esac

@@ -1,0 +1,19 @@
+redis安装配置（官网redis.io）
+wget http://download.redis.io/releases/redis-4.0.6.tar.gz （下载稳定版本stable）
+tar xf redis-4.0.6.tar.gz
+make
+make install PREFIX=/usr/local/redis （路劲根据自己需求，要大写）
+源码是configure过的如果遇到时间问题 date -s "yyyy-mm-dd hh:mm:ss"（格式自己选择）
+需要运行make test 要安装（yum -y install tcl）
+ps:
+redis-benchmark    性能测试工具
+ll redis-check-aof 检查aof日志工具
+redis-check-dump   检查rdb日志
+redis-cli          连接用的客户端
+redis-server	   启动redis服务
+cp /opt/redis-4.0.6/redis.conf  /usr/local/redis/
+sed -i 's/daemonize no/daemonize yes/g' redis.conf  开启守护进程启动
+/usr/local/redis/bin/redis-server /usr/local/redis/redis.conf
+redis-cli 连接成功
+echo "export PATH=/usr/local/redis/bin:$PATH" >> /etc/profile
+source /etc/profile (加入环境变量)

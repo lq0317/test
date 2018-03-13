@@ -1,0 +1,20 @@
+docker安装
+unbuntu 14.04 12.04 13.04 支持的版本
+安装前检查
+1 uame -a 检查内核版本 2.6.32版本以上
+2 ll /sys/class/misc/device-mapper 检查驱动 （文件是否存在）
+安装方式
+apt-get install docker (centos:yum -y install docker)
+docker自己方式安装
+1 检查apt的https支持情况 查看/usr/lib/apt/methods/https文件是否存在，若不存在则安装
+apt-get update
+apt-get install -y apt-transport-https
+2 添加docker的apt仓库
+echo deb https://get.docker.com/ubuntu docker main > /etc/apt/sources.list/docker.list
+3 添加仓库的key
+apt-key adv --keyserver hkp://keyserver.ubuntu.com/ubuntu:80 --recv-keys 
+4 安装
+apt-get update
+apt-get install -y lxc-docker
+简易安装方式
+curl -sSL https://get.docker.com/ubuntu|sh

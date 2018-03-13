@@ -1,0 +1,47 @@
+redis运维常用命令
+dbsize  查看当前数据库key的数量
+bgrewriteaof 命令行执行，重写aof
+save 		导出rdb日志
+bgsave		后台导出rdb日志
+lastsave	上次保存rdb日志的时间
+flushdb		清空当前数据库的键
+flushall	清空所有数据库的键
+
+{info
+used_memory:828864     			实际占用内存的空间
+used_memory_rss:7839744			理论上占用的内存空间
+mem_fragmentation_ratio:9.46	理论上占用内存申请的倍速、数
+
+# Replication					主从复制开启的进程replication
+role:master						
+connected_slaves:1
+slave0:ip=192.168.100.230,port=6380,state=online,offset=0,lag=0
+
+latest_fork_usec:2218 			上次dump持久化耗时
+}
+
+
+127.0.0.1:6379> CONFIG GET slowlog-log-slower-than 慢查询日志
+1) "slowlog-log-slower-than"
+2) "10000
+
+CONFIG GET slowlog-log-slower-than  number 设置慢查询微妙的时间
+
+127.0.0.1:6379> CONFIG GET slowlog-max-len  存取多少条慢日志
+1) "slowlog-max-len"
+2) "128"
+
+CONFIG GET  获取环境变量   config get timeout
+CONFIG SET  设置环境变量
+slowlog get  				获取具体的慢查询日志
+在执行flushdb的时候执行下面
+shutdown	nosave			不要重写aof
+
+redis监控 （哨兵模式）sentinel
+修改一台slave为new master
+slaveof no one  不做任何人的slave
+CONFIG SET slave-read-only no
+其他的slave指向new master
+slaveof  ip prot
+
+

@@ -1,0 +1,49 @@
+下载和安装
+
+supervisor依赖于python的setuptools包
+所以安装之前需要通过以下命令安装依赖包： 
+yum install -y python-setuptools
+之后下载并安装supervisor： 
+wget https://pypi.python.org/packages/source/s/supervisor/supervisor-3.2.1.tar.gz
+
+tar zxvf supervisor-3.2.1.tar.gz
+
+cd supervisor-3.2.1
+
+python setup.py install
+生成配置文件
+
+supervisor默认的配置文件存放在/etc/supervisord.conf 
+
+echo_supervisord_conf > /etc/supervisord.conf
+
+编辑配置文件
+在/etc/supervisord.conf文件末尾追加以下内容： 
+
+[program:index.js-8000]
+
+directory=/home/node/lbsapi/
+
+command=/home/node/node-v0.10.41-linux-x64/bin/node index.js -p 8000
+user=node
+autostart=true ;
+start at supervisord start (default: true)
+
+autorestart=true  ;whether/when to restart (default: unexpected)
+startsecs=3  ;number of secs prog must stay running ( def . 1)
+
+;stderr_logfile=/tmp/index.js_err.log  ;redirect proc stderr to stdout (default false)
+;stdout_logfile=/tmp/index.js.log  ;stdout log path, NONE  for  none; default AUTO
+常见操作
+#启动supervisor：
+supervisord -c /etc/supervisord.conf
+#关闭所有子进程并停止supervisor：
+supervisorctl shutdown
+#查看所有子进程状态
+supervisorctl status
+#启动子进程
+supervisorctl start program:name
+#关闭子进程
+supervisorctl stop program:name
+#重启所有子进程
+supervisorctl restart all

@@ -1,0 +1,94 @@
+ipvsadm用法
+简介：
+    ipvsadm是LVS在应用层的管理命令，我们可以通过这个命令去管理LVS的配置。在笔者使用的fedora14系统中，已经集成了LVS相关模块，但是ipvsadm命令仍然需要使用yum单独安装。
+
+基本用法：
+ipvsadm COMMAND [protocol] service-address
+               [scheduling-method] [persistence options]
+ipvsadm command [protocol] service-address
+               server-address [packet-forwarding-method]
+               [weight options]
+
+    第一条命令用于向LVS系统中添加一个用于负载均衡的virtual server（VS）；第二条命令用来修改已经存在的VS的配置，service address用来指定涉及的虚拟服务即虚拟地址，server-address指定涉及的真实地址。
+
+命令：
+    -A, --add-service：为ipvs虚拟服务器添加一个虚拟服务，即添加一个需要被负载均衡的虚拟地址。虚拟地址需要是ip地址，端口号，协议的形式。
+    -E, --edit-service：修改一个虚拟服务。
+    -D, --delete-service：删除一个虚拟服务。
+    -C, --clear：清除所有虚拟服务。
+    -R, --restore：从标准输入获取ipvsadm命令。一般结合下边的-S使用。
+    -S, --save：从标准输出输出虚拟服务器的规则。可以将虚拟服务器的规则保存，在以后通过-R直接读入，以实现自动化配置。
+    -a, --add-server：为虚拟服务添加一个real server（RS）
+    -e, --edit-server：修改RS
+    -d, --delete-server：删除
+    -L, -l, --list：列出虚拟服务表中的所有虚拟服务。可以指定地址。添加-c显示连接表。
+    -Z, --zero：将所有数据相关的记录清零。这些记录一般用于调度策略。
+    --set tcp tcpfin udp：修改协议的超时时间。
+    --start-daemon state：设置虚拟服务器的备服务器，用来实现主备服务器冗余。（注：该功能只支持ipv4）
+    --stop-daemon：停止备服务器。
+    -h, --help：帮助。
+
+参数：
+    以下参数可以接在上边的命令后边。
+    -t, --tcp-service service-address：指定虚拟服务为tcp服务。service-address要是host[:port]的形式。端口是0表示任意端口。如果需要将端口设置为0，还需要加上-p选项（持久连接）。
+    -u, --udp-service service-address：使用udp服务，其他同上。
+    -f, --fwmark-service integer：用firewall mark取代虚拟地址来指定要被负载均衡的数据包，可以通过这个命令实现把不同地址、端口的虚拟地址整合成一个虚拟服务，可以让虚拟服务器同时截获处理去往多个不同地址的数据包。fwmark可以通过iptables命令指定。如果用在ipv6需要加上-6。
+    -s, --scheduler scheduling-method：指定调度算法。调度算法可以指定以下8种：rr（轮询），wrr（权重），lc（最后连接），wlc（权重），lblc（本地最后连接），lblcr（带复制的本地最后连接），dh（目的地址哈希），sh（源地址哈希），sed（最小期望延迟），nq（永不排队）
+    -p, --persistent [timeout]：设置持久连接，这个模式可以使来自客户的多个请求被送到同一个真实服务器，通常用于ftp或者ssl中。
+    -M, --netmask netmask：指定客户地址的子网掩码。用于将同属一个子网的客户的请求转发到相同服务器。
+    -r, --real-server server-address：为虚拟服务指定数据可以转发到的真实服务器的地址。可以添加端口号。如果没有指定端口号，则等效于使用虚拟地址的端口号。
+    [packet-forwarding-method]：此选项指定某个真实服务器所使用的数据转发模式。需要对每个真实服务器分别指定模式。
+        -g, --gatewaying：使用网关（即直接路由），此模式是默认模式。
+        -i, --ipip：使用ipip隧道模式。
+        -m, --masquerading：使用NAT模式。
+    -w, --weight weight:设置权重。权重是0~65535的整数。如果将某个真实服务器的权重设置为0，那么它不会收到新的连接，但是已有连接还会继续维持（这点和直接把某个真实服务器删除时不同的）。
+    -x, --u-threshold uthreshold：设置一个服务器可以维持的连接上限。0~65535。设置为0表示没有上限。
+    -y, --l-threshold lthreshold：设置一个服务器的连接下限。当服务器的连接数低于此值的时候服务器才可以重新接收连接。如果此值未设置，则当服务器的连接数连续三次低于uthreshold时服务器才可以接收到新的连接。（PS：笔者以为此设定可能是为了防止服务器在能否接收连接这两个状态上频繁变换）
+    --mcast-interface interface：指定使用备服务器时候的广播接口。
+    --syncid syncid：指定syncid，同样用于主备服务器的同步。
+    以下选项用于list命令：
+    -c, --connection：列出当前的IPVS连接。
+    --timeout：列出超时
+    --daemon：
+    --stats：状态信息
+    --rate：传输速率
+    --thresholds：列出阈值
+    --persistent-conn：坚持连接
+    --sor：把列表排序。
+    --nosort：不排序
+    -n, --numeric：不对ip地址进行dns查询
+    --exact：单位
+    -6：如果fwmark用的是ipv6地址需要指定此选项。    
+    
+其他注意事项
+    如果使用IPv6地址，需要在地址两端加上”【】“。例如：ipvsadm -A -t [2001:db8::80]:80 -s rr
+    可以通过设置以下虚拟文件的值来防御DoS攻击：/proc/sys/net/ipv4/vs/drop_entry /proc/sys/net/ipv4/vs/drop_packet /proc/sys/net/ipv4/vs/secure_tcp
+
+例子：
+1.使用NAT模式
+添加地址为207.175.44.110:80的虚拟服务，指定调度算法为轮转。
+ipvsadm -A -t 207.175.44.110:80 -s rr
+添加真实服务器，指定传输模式为NAT
+ipvsadm -a -t 207.175.44.110:80 -r 192.168.10.1:80 -m
+ipvsadm -a -t 207.175.44.110:80 -r 192.168.10.2:80 -m
+ipvsadm -a -t 207.175.44.110:80 -r 192.168.10.3:80 -m
+NAT模式是lvs的三种模式中最简单的一种。此种模式下只需要保证调度服务器与真实服务器互通就可以运行。
+2.使用DR模式
+对于DR模式首先要配置真实服务器：
+对于每台真实服务器要进行以下操作：
+1、设置真实服务器的lo接口不做ARP应答
+echo 1 > /proc/sys/net/ipv4/conf/all/arg_ignore
+echo 1 > /proc/sys/net/ipv4/conf/lo/arg_ignore
+设置这个选项可以使得各个接口只对本接口上的地址进行响应
+还需要设置arp_announce选项为2，设置方法同上
+2、在真实服务器上添加虚拟IP
+ifconfig lo：0 192.168.10.10 boradcast 207.175.44.110 netmask 255.255.255.255
+ip r add 192.168.10.10 dev lo
+接着添加ipvs规则：
+添加地址为192.168.10.10:80的虚拟服务，指定调度算法为轮转。
+ipvsadm -A -t 192.168.10.10:80 -s rr
+添加真实服务器，指定传输模式为DR
+ipvsadm -a -t 192.168.10.10:80 -r 192.168.10.1:80 -g
+ipvsadm -a -t 192.168.10.10:80 -r 192.168.10.2:80 -g
+ipvsadm -a -t 192.168.10.10:80 -r 192.168.10.3:80 -g
+注意：此处的例子中客户、调度服务器、真实服务器都是位于同一网段的

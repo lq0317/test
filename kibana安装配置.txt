@@ -1,0 +1,20 @@
+kibana安装
+官网下载kibana二进制包
+cd /opt
+wget https://artifacts.elastic.co/downloads/kibana/kibana-6.0.1-linux-x86_64.tar.gz
+tar xf kibana-6.0.1-linux-x86_64.tar.gz
+cd  /opt/kibana-6.0.1-linux-x86_64/
+vi /opt/kibana-6.0.1-linux-x86_64/config/kibana.yml
+修改的地方
+server.port: 5601
+server.host: "0.0.0.0"
+elasticsearch.url: "http://192.168.100.233:9200"
+kibana.index: ".kibana"
+安装
+yum -y install screen
+screen
+/opt/kibana-6.0.1-linux-x86_64/bin/kibana
+ctrl+a+d 退出screen
+需要自己去创建es的索引
+例
+logstash-*

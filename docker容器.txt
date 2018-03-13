@@ -1,0 +1,40 @@
+docker容器
+默认只能开一个
+docker run image cmd（命令） arg（启动命令的参数）
+docker -i -t image cmd  （会分配一个伪tty终端）（-i 交互的方式，始终打开标准输入）
+docker ps （查看当前的正在运行的进程）
+docker ps -a -l（查看所有的容器）
+docker inspect 根据容器名字查看
+自定义容器名
+docker run -name=自定义名 -i -t image cmd（--name 自定义名）
+重新启动停止的容器
+docker start -i 容器名字
+删除停止的容器
+docker rm 容器名字
+守护式容器
+1 长期运行
+2 没有交互式会话
+3 适合运行应用程序和服务
+docker run -i -t image cmd
+使用ctrl+P ctrl+Q 退出
+附加到运行中的容器
+docker attac 容器名字（name或者id）
+启动守护式容器
+docker run -d image cmd
+查看容器日志
+docker logs （-f -t -tail） 容器名
+1 -f 跟踪日志变化返回结果
+2 -t 返回结果加上时间戳
+3 -tail 返回结尾出多少行
+4 不加参数默认打印所有的
+查看容器进程
+docker top 
+在运行中的容器内启动新的进程
+docker -exec [-d] [-i] [-t] 容器名 cmd 【arg】
+停止守护式容器
+docker stop 容器名 （发送信号，程序释放，在停止）
+docker kill 容器名 （直接杀掉）
+
+
+部署静态网站在容器中
+

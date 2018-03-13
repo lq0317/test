@@ -1,0 +1,23 @@
+1.安装mysql
+ls mysql-5.5.32-linux2.6-x86_64.tar.gz 
+tar xf mysql-5.5.32-linux2.6-x86_64.tar.gz 
+mv mysql-5.5.32-linux2.6-x86_64 /application/mysql-5.5.32
+ln -s /application/mysql-5.5.32 /application/mysql 
+##########相当于编译步骤的make install完成#############
+ 
+2.创建用户和目录
+useradd mysql -s /sbin/nologin -M
+chown -R mysql.mysql /application/mysql/data/
+ 
+3.初始化数据库
+cd /application/mysql
+./mysql_install_db --user=mysql --basedir=/opt/mysql-5.5.32 --datadir=/opt/mysql-5.5.32/data/
+cp support-files/my-small.cnf  /etc/my.cnf
+cp support-files/mysql.server /etc/init.d/mysqld
+chmod +x /etc/init.d/mysqld 
+sed -i 's#/usr/local/mysql#/application/mysql#g' /application/mysql/bin/mysqld_safe /etc/init.d/mysqld
+/etc/init.d/mysqld start
+netstat -lntup|grep mysql
+cp -a /application/mysql/bin/* /usr/local/sbin/
+mysqladmin password oldboy123
+mysql -uroot -poldboy123

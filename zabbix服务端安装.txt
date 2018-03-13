@@ -1,0 +1,96 @@
+zabbix安装
+准备
+1 准备web环境（nginx+php+mysql按照别的文档就行）
+2 wget http://jaist.dl.sourceforge.net/project/zabbix/ZABBIX%20Latest%20Stable/2.2.6/zabbix-2.2.6.tar.gz
+(我是放在/usr/local/src/下面)
+安装
+（1）创建。导入zabbix数据库
+cd /usr/local/src #进入软件包下载目录
+tar zxvf zabbix-2.2.6.tar.gz #解压
+cd /usr/local/src/zabbix-2.2.6/database/mysql #进入mysql数据库创建脚本目录
+ls #列出文件，可以看到有schema.sql、images.sql、data.sql这三个文件
+mysql -u root -p #输入密码，进入MySQL控制台
+create database zabbix character set utf8; #创建数据库zabbix，并且数据库编码使用utf8
+grant all on zabbix.* to 'zabbix'@localhost identified by '123456' with grant option; #允许账户zabbix能从本机连接到数据库zabbix
+use zabbix #进入数据库
+source /usr/local/src/zabbix-2.2.6/database/mysql/schema.sql #导入脚本文件到zabbix数据库
+source /usr/local/src/zabbix-2.2.6/database/mysql/images.sql #导入脚本文件到zabbix数据库
+source /usr/local/src/zabbix-2.2.6/database/mysql/data.sql #导入脚本文件到zabbix数据库
+cd /usr/lib64/mysql #32位系统为/usr/lib/mysql，注意系统版本同，文件版本可能不一样，这里是16.0.0
+ln -s libmysqlclient.so.16.0.0 libmysqlclient.so #添加软连接
+ln -s libmysqlclient_r.so.16.0.0 libmysqlclient_r.so #添加软连接
+ （2）安装zabbix
+1、添加用户：
+groupadd zabbix #创建用户组zabbix
+useradd zabbix -g zabbix -s /bin/false #创建用户zabbix，并且把用户zabbix加入到用户组zabbix中
+2、安装依赖包 #CentOS使用yum命令安装
+yum install net-snmp-devel curl curl-devel mysql-devel -y
+备注：以上软件包如果在安装Web环境LAMP或者LNMP时已经安装过，此步骤可忽略
+3、安装zabbix
+ln -s /usr/local/lib/libiconv.so.2 /usr/lib/libiconv.so.2 #添加软连接
+/sbin/ldconfig #使配置立即生效
+cd /usr/local/src/zabbix-2.2.6 #进入安装目录
+./configure --prefix=/usr/local/zabbix --enable-server --enable-agent --with-net-snmp --with-libcurl --enable-proxy --with-mysql=/usr/bin/mysql_config #配置
+make #编译
+make install #安装
+ln -s /usr/local/zabbix/sbin/* /usr/local/sbin/ #添加系统软连接
+ln -s /usr/local/zabbix/bin/* /usr/local/bin/ #添加系统软连接
+说明：find / -name mysql_config 查找位置，如果没有mysql_config，需要安装yum install mysql-devel
+4、添加zabbix服务对应的端口（先查看是不是本身就已经开放了，有的话则省略）
+vi /etc/services #编辑，在最后添加以下代码
+# Zabbix
+zabbix-agent 10050/tcp # Zabbix Agent
+zabbix-agent 10050/udp # Zabbix Agent
+zabbix-trapper 10051/tcp # Zabbix Trapper
+zabbix-trapper 10051/udp # Zabbix Trapper
+:wq!#保存退出
+5、修改zabbix配置文件
+cd /usr/local/zabbix/etc
+vi /usr/local/zabbix/etc/zabbix_server.conf
+DBName=zabbix #数据库名称
+DBUser=zabbix #数据库用户名(可以是root)
+DBPassword=123456 #数据库密码
+LogFile=/usr/local/zabbix/zabbix_server.log （日志文件路劲）
+DBPort=3306 #机器数据库端口是3306(根据自己服务器)
+DBSocket=/tmp/mysql.sock （根据自己mysql）
+ListenIP=127.0.0.1 #数据库ip地址（可以是ip地址）
+AlertScriptsPath=/usr/local/zabbix/share/zabbix/alertscripts #zabbix运行脚本存放目录（可以省略）
+:wq! #保存退出
+客户端的配置（为了测试使用自己的服务器）
+vi /usr/local/zabbix/etc/zabbix_agentd.conf
+LogFile=/tmp/zabbix_agentd.log
+Server=127.0.0.1 （这个是自己的服务做实验，后期需要监控别的用户添加）
+ServerActive=127.0.0.1
+Hostname=10-19-20-181
+Include=/usr/local/zabbix/etc/zabbix_agentd.conf.d/
+UnsafeUserParameters=1
+:wq! #保存退出
+6、添加开机启动脚本
+cp /usr/local/src/zabbix-2.2.6/misc/init.d/fedora/core/zabbix_server /etc/rc.d/init.d/zabbix_server #服务端
+cp /usr/local/src/zabbix-2.2.6/misc/init.d/fedora/core/zabbix_agentd /etc/rc.d/init.d/zabbix_agentd #客户端
+chmod +x /etc/rc.d/init.d/zabbix_server #添加脚本执行权限
+chmod +x /etc/rc.d/init.d/zabbix_agentd #添加脚本执行权限
+chkconfig zabbix_server on #添加开机启动
+chkconfig zabbix_agentd on #添加开机启动
+7、修改zabbix开机启动脚本中的zabbix安装目录
+vi /etc/rc.d/init.d/zabbix_server #编辑服务端配置文件
+BASEDIR=/usr/local/zabbix/ #zabbix安装目录
+:wq! #保存退出
+vi /etc/rc.d/init.d/zabbix_agentd #编辑客户端配置文件
+BASEDIR=/usr/local/zabbix/ #zabbix安装目录
+:wq! #保存退出
+配置web站点
+cd /usr/local/src/zabbix-2.2.6
+cp -r /usr/local/src/zabbix-2.2.6/frontends/php /var/www/html/zabbix
+service zabbix_server start #启动zabbix服务端
+service zabbix_agentd start #启动zabbix客户端
+修改php配置文件参数
+1、vi /etc/php.ini #编辑修改
+post_max_size =16M
+max_execution_time =300
+max_input_time =300
+找到;date.timezone =
+修改为date.timezone = Asia/Shanghai #设置时区（没有需要添加）
+重启php
+访问http://192.168.100.230/zabbix/setup.php  #192.168.1.22是zabbix服务器地址根据自己web服务配置访问
+

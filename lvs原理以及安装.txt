@@ -1,0 +1,176 @@
+lvs负载均衡
+arp协议，地址解析协议，使用arp协议可以实现通过ip地址获得对应主机的物理地址（MAC地址）
+计算机通信靠mac地址，arp实现ip地址转换为mac地址
+arp通信的主机双方必须在同一个物理网段
+arp表
+1.可以加快arp解析速度
+2. 给黑客带来的攻击服务器主机的风险，arp欺骗或者攻击
+arp在生产环境的问题
+1.arp病毒，arp欺骗
+2.高可用服务器对切换时要考虑arp缓存的问题
+3.路由器等设备无缝迁移是要考虑arp缓存的问题，例如：办公室的路由器
+/sbin/arping -I eth0 -c 3 -s 10.0.0.162 10.0.0.253
+/sbin/arping -U -I eth0 10.0.0.162  用来更新arp中mac地址
+
+常用开源集群软件有：lvs，keepalived，haproxy，nginx，apache，heartbeat
+常用商业集群硬件有：F5,Netscaler，Radware，A10等
+
+ipvs 调度工具，工作在内核层 kernel 不能直接访问，实现负载均衡功能
+ipvsadm 通过ipvsadm管理ipvs，keepalived实现管理及高可用
+
+虚拟ip（virtual ip address） vip 域名要解析到vip，用于向客服端提供服务的ip地址
+真实ip（real server ip address） rip 集群节点使用的ip地址
+dip  用于连接内外网络的ip地址，物理网卡上的ip地址，是负载均衡的ip
+
+三种模式
+1.VS/NAT模式（Network address translation） 网络地址转换
+1)客户端请求数据，目标IP为VIP
+2)请求数据到达LB服务器，LB根据调度算法将目的地址修改为RIP地址及对应端口（此RIP地址是根据调度算法得出的。）并在连接HASH表中记录下这个连接。
+3)数据包从LB服务器到达RS服务器webserver，然后webserver进行响应。Webserver的网关必须是LB，然后将数据返回给LB服务器。
+4)收到RS的返回后的数据，根据连接HASH表修改源地址VIP&目标地址CIP，及对应端口80.然后数据就从LB出发到达客户端。
+5)客户端收到的就只能看到VIP\DIP信息。
+NAT模式优缺点：
+1、NAT技术将请求的报文和响应的报文都需要通过LB进行地址改写，因此网站访问量比较大的时候LB负载均衡调度器有比较大的瓶颈，一般要求最多之能10-20台节点
+2、只需要在LB上配置一个公网IP地址就可以了。
+3、每台内部的节点服务器的网关地址必须是调度器LB的内网地址。
+4、NAT模式支持对IP地址和端口进行转换。即用户请求的端口和真实服务器的端口可以不一致。
+2.VS/TUN模式（tunneling）
+1）客户请求数据包，目标地址VIP发送到LB上。
+2）LB接收到客户请求包，进行IP Tunnel封装。即在原有的包头加上IP Tunnel的包头。然后发送出去。
+3）RS节点服务器根据IP Tunnel包头信息（此时就又一种逻辑上的隐形隧道，只有LB和RS之间懂）收到请求包，然后解开IP Tunnel包头信息，得到客户的请求包并进行响应处理。
+4）响应处理完毕之后，RS服务器使用自己的出公网的线路，将这个响应数据包发送给客户端。源IP地址还是VIP地址。
+3.DR模式（Direct routing） ((((需要在同一个网络环境中，因为lb和rs需要有一块网卡连接))))
+1、通过在调度器LB上修改数据包的目的MAC地址实现转发。注意源地址仍然是CIP，目的地址仍然是VIP地址。
+2、请求的报文经过调度器，而RS响应处理后的报文无需经过调度器LB，因此并发访问量大时使用效率很高（和NAT模式比）
+3、因为DR模式是通过MAC地址改写机制实现转发，因此所有RS节点和调度器LB只能在一个局域网里面
+4、RS主机需要绑定VIP地址在LO接口上，并且需要配置ARP抑制。
+5、RS节点的默认网关不需要配置成LB，而是直接配置为上级路由的网关，能让RS直接出网就可以。
+6、由于DR模式的调度器仅做MAC地址的改写，所以调度器LB就不能改写目标端口，那么RS服务器就得使用和VIP相同的端口提供服务。
+
+lvs的调度算法  并发官网单台30w，一般几万左右
+rr 轮询调度
+wrr 加权轮询
+dh 目的地址哈希  用于防火墙集群较多
+sh 源地址哈希    用于防火墙集群较多
+wlc 加权最小连接数
+lc  最小连接数
+lblc 基于地址的最小连接数 一致性hash webcache和dbcache
+lblcr 基于地址带重复最小连接数
+SED 最短的期望延迟
+NO 最少队列调度
+
+lvs D/R模式安装 6.5要使用ipvsadm1.26版本，5.x要使用ipvsadm1.24版本
+192.168.100.234 lvs调度器  （vip随意192.168.100.200）
+192.168.100.233 realip
+192.168.100.232 realip
+
+lsmod|grep ip_vs  查看加载内核模块
+[root@guanggao ~]# cat /etc/redhat-release 
+CentOS release 6.5 (Final)
+[root@guanggao ~]# uname -rm
+2.6.32-431.el6.x86_64 x86_64
+[root@guanggao ~]# yum -y install kernel-devel
+[root@guanggao ~]# yum -y install libnl* popt* （不然安装ipvsadm会报错）
+[root@guanggao ~]# ln -s /usr/src/kernels/2.6.32-696.20.1.el6.x86_64/ /usr/src/linux
+[root@guanggao opt]# wget http://www.linuxvirtualserver.org/software/kernel-2.6/ipvsadm-1.26.tar.gz
+[root@guanggao opt]# cd ipvsadm-1.26 （查看下面有makefile文件，不需要configure）
+[root@guanggao ipvsadm-1.26]# make && make install （编译的时候一定要上面的软连接，不然按照内核编方式编译）
+[root@guanggao ipvsadm-1.26]# ipvsadm （执行命令加载模块或者modprobe ip_vs）
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+[root@guanggao ipvsadm-1.26]# lsmod |grep ip_vs（安装成功）
+ip_vs                 125220  0 
+libcrc32c               1246  1 ip_vs
+ipv6                  317340  30 ip_vs,ip6t_REJECT,nf_conntrack_ipv6,nf_defrag_ipv6
+[root@guanggao ipvsadm-1.26]# ifconfig eth2:0 10.0.0.10/24 up （前面不变，后面up为down则取消）
+[root@guanggao ipvsadm-1.26]# route add -host 192.168.100.200 dev eth2 （可以不添加，删除的话add换成del）
+[root@guanggao ipvsadm-1.26]# ifconfig eth2:0 （检查有没有成功加上vip）
+eth2:0    Link encap:Ethernet  HWaddr 00:50:56:9F:3A:77  
+          inet addr:192.168.100.200  Bcast:192.168.100.255  Mask:255.255.255.0
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+[root@guanggao ipvsadm-1.26]# ipvsadm -L
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+[root@guanggao ipvsadm-1.26]# ipvsadm -C （清空服务）
+[root@guanggao ipvsadm-1.26]# ipvsadm -A -t 192.168.100.200:80 -s rr -p 20 （添加一个负载均衡服务）
+[root@guanggao ipvsadm-1.26]# ipvsadm -a -t 192.168.100.200:80 -r 192.168.100.2333 -g -w 1 （添加一个realip）
+[root@guanggao ipvsadm-1.26]# ipvsadm -a -t 192.168.100.200:80 -r 192.168.100.232 -g -w 1  （-g指定模式，直接路由，默认，-w权重）
+[root@guanggao ipvsadm-1.26]# ipvsadm -L
+[root@guanggao ipvsadm-1.26]# ipvsadm -L
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  .:http rr persistent 20
+  -> .:http                       Route   1      0          0         
+  -> .:http                       Route   1      0          0   
+[root@guanggao ipvsadm-1.26]# ipvsadm -d -t 192.168.100.200:80 -r 192.168.100.233 （删除一个realip）
+[root@guanggao ipvsadm-1.26]# ipvsadm -D -t 192.168.100.200:80 删除一个负载均衡服务
+后端服务器需要绑定vip 
+[root@salt-minion2 ~]# ifconfig lo:0 192.168.100.200/32 up
+[root@salt-minion1 ~]# ifconfig lo:0 192.168.100.200/32 up
+主机路由可添加可不添加
+[root@salt-minion1 ~]# route add -host 192.168.100.200 dev lo
+[root@salt-minion2 ~]# route add -host 192.168.100.200 dev lo
+抑制arp(后端服务器操作)
+[root@salt-minion1 ~]# echo "1" > /proc/sys/net/ipv4/conf/lo/arp_ignore
+[root@salt-minion1 ~]# echo "1" > /proc/sys/net/ipv4/conf/lo/arp_announce
+[root@salt-minion2 ~]# echo "1" > /proc/sys/net/ipv4/conf/lo/arp_ignore
+[root@salt-minion2 ~]# echo "1" > /proc/sys/net/ipv4/conf/lo/arp_announce
+查看活动状态
+
+[root@guanggao ~]# watch -n 1 ipvsadm -L -n    （--stats会更加详细）                                
+Every 1.0s: ipvsadm -L -n                               Thu Mar  8 18:41:45 2018
+
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn（活动状态） InActConn（没有活动状态）
+TCP  192.168.100.200:80 rr persistent 20
+  -> 192.168.100.232:80           Route   1      0          0
+  -> 192.168.100.233:80           Route   1      0          0
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

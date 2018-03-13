@@ -1,0 +1,182 @@
+rsync 
+常用的参数
+-e 使用通道协议ssh
+-v --verbos 详细模式输出。传说是的进度信息
+-z --compress 压缩传输
+-a --archive 指一下参数
+-r 递归模式
+-t 保持文件时间信息
+-o 保持文件属主信息
+-p 保持文件权限信息
+-g 保持文件属组信息
+-P 显示同步过程及传输进度等信息
+-D 保持设备文件信息
+-l 保留软连接
+
+--exclude=PATTERN 指定排除不需要的文件模式
+--exclude-from=file  把需要排除的放到文件中
+tar -cvzf test.tar.gz --exclude=test/005/  test
+tar czvf oracle.tar.gz oracle --exclude  oracle/oradata --exclude oracle/admin/shvoip --exclude oracle/doc
+参数在命令中间和后面有区别，中间要用=号，后面空格跟排除的
+
+常用模式 -avz -vzrtopgDl
+本地
+1. rsync [OPTION]... SRC [SRC]... [USER@]HOST:DEST 
+2. rsync [OPTION]... [USER@]HOST:SRC DEST 
+3. rsync [OPTION]... SRC [SRC]... DEST 
+4. rsync [OPTION]... [USER@]HOST::SRC [DEST] 
+5. rsync [OPTION]... SRC [SRC]... [USER@]HOST::DEST 
+6. rsync [OPTION]... rsync://[USER@]HOST[:PORT]/SRC [DEST]
+通道
+rsync -avz -e "ssh -p 22" 源  目的
+守护
+服务端配置
+yum -y install rsync （一般可能默认安装）
+/etc/rsyncd.conf （配置文件默认不存在）
+配置文件参数
+pid file = /var/run/rsyncd.pid   
+port = 873
+address = 192.168.1.171  
+#uid = nobody 
+#gid = nobody    
+uid = root   可以使用普通用户
+gid = root
+
+use chroot = no  （一般使用内网，不考虑安全性）  
+#read only = yes  read only 是只读选择，也就是说，不让客户端上传文件到服务器上。还有一个 write only选项，自己尝试是做什么用的吧；
+
+#limit access to private LANs
+hosts allow=192.168.1.0/255.255.255.0 10.0.1.0/255.255.255.0  一般放置在模块下面
+hosts deny=*
+
+max connections = 200 最大客户端连接数
+#motd file = /etc/rsyncd.motd  定义服务器信息的
+
+#This will give you a separate log file
+log file = /var/log/rsync.log rsync服务器日志
+
+#This will log every file transferred - up to 85,000+ per user, per sync
+#transfer logging = yes  传输日志
+
+log format = %t %a %m %f %b
+syslog facility = local3
+timeout = 300  超时
+
+[rhel4opt] 自定义
+path = /opt   共享的目录
+list=no		  rsycn传输同步数据是否列出提供哪些目录模块
+ignore errors  忽略io错误
+#comment = This is RHEL 4 opt  注释可以自定义
+#hosts allow=192.168.1.0/255.255.255.0 10.0.1.0/255.255.255.0  
+#hosts deny=*
+auth users = easylife  认证用户
+secrets file = /etc/rsyncd/rsyncd.secrets  密码存放的路径
+#exclude=a b b/2  排除a,b文件和目录b下面的2
+
+启动方式
+rsync --daemon --config=/etc/rsyncd/rsyncd.conf （--config可以不指定，默认会使用/etc下面的）
+echo "easylife:password" > /etc/rsyncd/rsyncd.secrets
+cat /etc/rsyncd/rsyncd.secrets
+easylife rsync虚拟用户名  password虚拟用户的密码
+chmod 600 /etc/rsyncd/rsyncd.secrets
+
+客户端配置
+yum -y install rsync
+echo "password" > /etc/rsyncd/rsyncd.secrets (密码为服务端虚拟用户的密码)
+chmod 600 /etc/rsyncd/rsyncd.secrets 
+
+Pull: rsync [OPTION...] [USER@]HOST::SRC... [DEST]
+      rsync [OPTION...] rsync://[USER@]HOST[:PORT]/SRC... [DEST]
+Push: rsync [OPTION...] SRC... [USER@]HOST::DEST
+      rsync [OPTION...] SRC... rsync://[USER@]HOST[:PORT]/DEST
+
+rsync -avz easylife@服务端ip::共享目录  本地目录 --password-file=/etc/rsyncd/rsyncd.secrets
+rsync -avz --exclude={a,b,c,d}easylife@服务端ip::共享目录  本地目录 --password-file=/etc/rsyncd/rsyncd.secrets
+
+无差异同步
+推送
+备份 --delete
+拉取
+代码发布 --delete
+
+共享多个模块
+list=no		  rsycn传输同步数据是否列出提供哪些目录模块
+ignore errors  忽略io错误
+#comment = This is RHEL 4 opt  注释可以自定义
+#hosts allow=192.168.1.0/255.255.255.0 10.0.1.0/255.255.255.0  
+#hosts deny=*
+auth users = easylife  认证用户
+secrets file = /etc/rsyncd/rsyncd.secrets  密码存放的路径
+#exclude=a b b/2  排除a,b文件和目录b下面的2
+这些参数配置可以放到全局配置中，然后加上别的目录模块，也可以自定义目录，密码
+权限
+infotify
+在客户端启用一个inotify进程，监控一个目录，发生变化则执行rsync命令
+内核版本要在2.6.13以上
+需要修改一下参数，
+[root@salt-minion2 ~]# ll /proc/sys/fs/inotify/
+总用量 0
+-rw-r--r-- 1 root root 0 3月   7 10:49 max_queued_events 50000000
+-rw-r--r-- 1 root root 0 3月   7 10:49 max_user_instances 
+-rw-r--r-- 1 root root 0 3月   7 10:49 max_user_watches   3000000
+
+在github查找源码安装包
+https://github.com/rvoicilas/inotify-tools/archive/3.20.1.tar.gz 浏览器下载
+tar xf infotify-tools-3.20.1.tar.gz
+./configure --prefix=/usr/local/infotify-tools-3.14
+make&&makeinstall
+ln -s /usr/local/infotify-tools-3.14 /usr/local/infotify
+./bin/infotifywait --help
+-r 递归查询
+-q 静默模式
+-m 始终保持监听状态
+--excludesi  排除文件或目录时，不区分大小写
+--timefmt 指定时间输出格式
+--format 打印使用指定的输出类似格式字符串
+-e 指定需要监控的事件
+就是各种针对目录的变化
+
+./bin/infotifywait  -mrq --timefmt '%d%m%y %H:%M' --format  '%T %w%f' -e create,delete,access,open /backup
+一般时间格式不需要
+#!/bin/bash
+cmd="/usr/local/infot ify/bin/infotifywait"
+$cmd -mrq --format  '%T %w%f' -e create,close_write,delete /backup| \  #\换行符
+while read line
+do
+rsync -az $line easylife@host::/opt --password-file=/etc/rsyncd/rsyncd.secrets
+done
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,108 @@
+redis 常用命令
+redis默认16个数据库服务器（0-15）
+默认操作在0号服务器操作
+redis的key默认没有有效期（因为是用来做存储用的）
+通用操作
+set key value [EX seconds] | [PX milliseconds] [NX|XX]  (设置key值，2者都写以后面的为准)
+				生命周期秒数	毫秒数         NX不存在 XX存在
+set site www.datuhongan.com ex 10 ps 6000
+set site www.baidu.com 设置的key存在则以后面的为准
+mset key value key2 value key3 value 设置多个键值
+mget key1 key2 key3  获取多个键值
+get site     （获取key值）
+key *         获取所有key
+key 正则
+key *        通配任意字符   key  si*
+key ？       通配单个字符  key  si?e
+key []       通配其中的字符   key si[tey]
+randomkey    获取随机的key
+type key     获取key的类型  type site
+exists key   判断是否有key 返回值1则有 exists site
+del key      删除key 	del site
+rename key(前） key(新)        修改key名 rename site web （获取要用最新的key）
+如果之前的key存在修改后则变成更改的值
+renamenx key key   如果新key不存在则修改 （返回0不成功）
+select 1           选着服务为1 （move key 1） 将key移动到1号服务器
+ttl key            查询key值的有效期（-1为永久有效，不存在的key返回-2【2.8版本以上】）
+pttl key 			查询key值毫秒数
+expire key 数值    设置key的有效期（秒数为单位）
+pexpire key 数值    同上（为毫秒）
+persit key          将key变为永久有效
+flushdb 清空数据库服务器
+数据类型操作
+string字符串类型
+setrange key 数值（偏移量）  value  偏移键值 setrange site 2 ?? 从第二个偏移向右偏移2个
+append key value  在key的值上面附加一个value值
+getrange key 数值 数值2 从key的值获取数值到数值2的值（使用负数的话向左数）
+getset key value  设置key并获取键值
+incr   key         在key值上面增加1
+decr   key1		   在key值上面减少1
+incrby key value   在key值上面增加value     incrby age 5   加5
+decrby key value	在key值上面减少value    decrby age 5   减5
+setbit char 2 1     将小写字母变成大写字母 （2代表的是二进制中的位），更改位上面的值
+link类型操作
+character 代表链表的名字
+lpush character a  				将a加入到链表的左边（后面可以跟多个元素反向排序）
+rpush character b  				将b加入到链表的右边
+lrange character 0 -1 			查看链表的所有元素
+lrange character 1 2   			查看1，2位2个元素，包含起始值（0.1,2.3，...）
+lpop character      			弹出左边的元素，同时链表的元素消失
+rpop character      			弹出右边的元素，同时链表的元素消失
+lrem character number value  	删除链表的value元素，number指遇到几次删除（默认从头部开始删除，可用负数）
+ltrim character number number2  截取number到number2的值（只保留这些键值）
+lindex character number  		查看链表中索引为number的键值
+llen character 			 		查看链表元素的长度
+linsert character before 3 2 	在链表中key位3的之前插入2 （3为链表中原有的值，2位新增）
+linsert character after 1 2
+rpoplpush character  链表   	弹出character右边的元素放入新链表左边
+brpop character number          （数值默认为妙，可以等待链表的操作）
+
+集合set相关命令（无序性，唯一性，确定性）
+sadd 集合 value1 value2  给集合增加value，value2 两个值
+smembers 集合 			 返回集合中的元素（排序随机，无序性）
+srem 集合 value		 ·	 删除集合中的value元素
+spop 集合				 随机弹出集合中的某个元素（可以理解为随机删除）
+srandmember 集合		 随机弹出，不删除
+sismember 集合 value 	 判断value是否在集合中
+scard 集合				 获取集合有多少个元素
+smove 集合1 value 集合2 value 	将集合1的value移动到集合2中                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+sinter 集合1 集合2 集合3   		获取三个集合的交集
+sunion 集合  集合2 集合3  		获取三个集合的并集
+sdiff 集合1  集合 				集合1和集合的值减掉交集保留集合1的元素
+sinterstore  新的集合 集合1 集合2  	将集合1和集合2的值存放在新的集合
+
+order set （有序集合）
+zadd 集合 key1 value1 key2 value2 key3 value3（可能是value1 key1 value2 key2） 增加一个有序集合
+zrang 集合 0 2   按照位来获取值
+zrangebyscore 集合   value1  valu2   按照键值取值
+zrangebyscore 集合   value1  valu2 limit 1 2  按照键值取值同时limit限制位
+zrange  集合 1 3 withscores		按照位取值同时把值也取出
+zrangebyscore 集合 value1		value2 withscores  按照键值取值同时把元素取出
+zrank 集合  value        		查看value在集合中的排序
+zrevrank 集合 value       		查看value在集合中的排序（倒叙，大到小）
+zremrangebyscore 集合  value  value2  删除集合中的元素，根据键值
+zremrangebyran   集合  value  value2  删除集合中的元素，根据排名
+zinterstore 新的集合 numkeys 集合1 结合2  把2个集合中相同的元素的数值相加放入指定的集合（numkeys为后面的集合数量）
+zinterstore 新的集合 numkeys 集合1 结合2 aggregate min 比较做运算求和或者比较大小
+zinterstore 新的集合 numkeys 集合1 结合2 weight 2 1 aggregate max 权重大小乘以倍数在运算
+
+hash结构（php中的关联数组）
+hset hash  field value   设置一个key里面为filed 对应值为value （key为hash表，field为键，value为键值）
+hmset hash  filed1 value1  filed2 value2  设置多个值
+hget hash filed 获取hash表中的值
+hget hash filed1 filed2  获取多个键的值
+hgetall hash 		获取所有的值
+hdel hash filed1		删除filed1的键值
+hlen hash			查看hash表中的键多少个
+hexists hash filed   判断hash中是否有filed这个键
+hkyes  hash			获取hash中的所有键 
+
+hincrby  hash filed	 	num 	将hash中的filed递增num 
+hincrbyfloat  hash filed num	将hash中的filed递增num （num为小数）
+
+
+
+
+
+
+

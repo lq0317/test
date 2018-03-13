@@ -1,0 +1,144 @@
+elk日志平台
+1、安装Java程序并确认Java版本是8或更高
+yum -y install java-1.8.0-openjdk java-1.8.0-openjdk-devel
+或者使用源码安装jdk
+jdk-8u161-linux-x64.tar.gz 官网下载
+NODE_HOME=/opt/node-v4.4.7-linux-x64/bin/					(需要用到node安装head插件)
+NODE_PATH=/opt/node-v4.4.7-linux-x64/lib/node_modules
+JAVA_HOME=/opt/jdk1.8.0_161/
+JAVA_BIN=/opt/jdk1.8.0_161/bin
+JRE_HOME=/opt/jdk1.8.0_161/jre
+PATH=$JAVA_BIN:$PATH:$NODE_HOME
+export JAVA_HOME JAVA_BIN  JRE_HOME PATH NODE_HOME NODE_PATH
+2、由于es会有内核 参数相关的问题，所以我们要做一下配置
+echo "vm.max_map_count=262144" >> /etc/sysctl.conf
+sysctl -p 生效
+vi /etc/security/limits.d/90-nproc.conf
+*          soft    nproc     4096 （开启进程数需要为4096）
+vi /etc/security/limits.conf
+*  soft nofile 65536
+* hard nofile 131072
+* soft nproc 2048
+* hard nproc 4096
+* soft memlock unlimited
+* hard memlock unlimited
+防火墙
+iptables -A INPUT -p tcp --dport 9100 -j ACCEPT （安装head插件的服务器需要开放9100端口）
+iptables -A INPUT -p tcp --dport 9200 -j ACCEPT
+iptables -A INPUT -p tcp --dport 9300 -j ACCEPT
+
+
+1、官网下载elasticsearch安装包
+groupadd es
+useradd es -g es
+elasticsearch-6.0.0.tar.gz
+cd /opt/
+wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.0.0.tar.gz
+tar xf /opt/elasticsearch-6.0.0.tar.gz
+vi /opt/elasticsearch-6.0.0/config/elasticsearch.yml
+cluster.name: datuhongan
+node.name: node-1
+path.data: /data/elasticsearch/data
+path.logs: /data/elasticsearch/logs
+bootstrap.memory_lock: false
+bootstrap.system_call_filter: false          
+network.host: 0.0.0.0            
+http.port: 9200                     
+discovery.zen.ping.unicast.hosts: ["192.168.100.232", "192.168.100.233","192.168.100.234"]  (设置自动发现节点) 
+discovery.zen.minimum_master_nodes: 3 （设置可以拥有几个节点）
+http.cors.enabled: true					（跨域，不然在head上面访问会发现集群未连接）
+http.cors.allow-origin: "
+su es
+cd /opt/elasticsearch-6.0.0
+./bin/elasticsearch -d
+
+2 配置head插件（手动安装）
+下载head插件
+wget  https://github.com/mobz/elasticsearch-head/archive/master.zip
+安装node
+wget https://npm.taobao.org/mirrors/node/latest-v4.x/node-v4.4.7-linux-x64.tar.gz
+tar -zxvf node-v4.4.7-linux-x64.tar.gz
+配置下环境变量（与es重复的jdk不用，下面是总的）
+NODE_HOME=/opt/node-v4.4.7-linux-x64/bin/
+NODE_PATH=/opt/node-v4.4.7-linux-x64/lib/node_modules
+JAVA_HOME=/opt/jdk1.8.0_161/
+JAVA_BIN=/opt/jdk1.8.0_161/bin
+JRE_HOME=/opt/jdk1.8.0_161/jre
+PATH=$JAVA_BIN:$PATH:$NODE_HOME
+export JAVA_HOME JAVA_BIN  JRE_HOME PATH NODE_HOME NODE_PATH
+执行 source /etc/profile
+安装grunt
+cd /opt/elasticsearch-head-master
+npm install -g grunt-cli  //执行后会生成node_modules文件夹
+[root@guanggao elasticsearch-head-master]# grunt -version （查看安装grunt有没有成功）
+grunt-cli v1.2.0
+grunt v1.0.1
+修改Gruntfile.js
+hostname: '*'  （在keepalive: true,这个下面加一行。保持与上面的对齐，逗号需要自己添加 ）
+修改_site/app.js
+this.base_uri = this.config.base_uri || this.prefs.get("app-base_uri") || "http://192.168.100.233:9200";
+npm install（安装package.json这个文件里面会有很多需要的依赖包，你的项目的根目录下会新增加一个node_modules的目录著作权归作者所有）
+原文: https://www.w3cplus.com/tools/get-up-running-grunt.html 可以去看相关的信息
+npm install 时报 phantomjs-prebuilt@2.1.14 安装失败解决方案 （有一大串error）
+npm install phantomjs-prebuilt@2.1.14 --ignore-scripts
+grunt server 启动grunt
+访问192.168.100.233:9100
+
+3 es集群
+和上面的步骤需要一样不需要head插件
+cluster.name: datuhongan （集群名字）
+node.name: node-2			（节点名字不需要不同）
+path.data: /data/elasticsearch/data
+path.logs: /data/elasticsearch/logs
+bootstrap.memory_lock: false （打开会包内存的问题。可以在/etc/security/limits.conf设置）
+bootstrap.system_call_filter: false
+network.host: 0.0.0.0            
+http.port: 9200                     
+discovery.zen.ping.unicast.hosts: ["192.168.100.232", "192.168.100.233","192.168.100.234"]  (设置自动发现节点，也可以只在一台服务器上面设置，但是服务器挂了不能发现) 
+discovery.zen.minimum_master_nodes: 3 （设置可以拥有几个节点）
+http.cors.enabled: true					（跨域，不然在head上面访问会发现集群未连接）
+http.cors.allow-origin: "
+
+跨域的问题
+http.cors.enabled	是否支持跨域，默认为false
+http.cors.allow-origin	当设置允许跨域，默认为*,表示支持所有域名，如果我们只是允许某些网站能访问，那么可以使用正则表达式。比如只允许本地地址。 /https?:\/\/localhost(:[0-9]+)?/
+http.cors.max-age	浏览器发送一个“预检”OPTIONS请求，以确定CORS设置。最大年龄定义多久的结果应该缓存。默认为1728000（20天）
+http.cors.allow-methods	允许跨域的请求方式，默认OPTIONS,HEAD,GET,POST,PUT,DELETE
+http.cors.allow-headers	跨域允许设置的头信息，默认为X-Requested-With,Content-Type,Content-Length
+http.cors.allow-credentials	是否返回设置的跨域Access-Control-Allow-Credentials头，如果设置为true,那么会返回给客户端。
+
+
+# 配置文件中给出了三种配置高性能集群拓扑结构的模式,如下： 
+# 1. 如果你想让节点从不选举为主节点,只用来存储数据,可作为负载器 
+# node.master: false 
+# node.data: true 
+# 2. 如果想让节点成为主节点,且不存储任何数据,并保有空闲资源,可作为协调器
+# node.master: true
+# node.data: false
+# 3. 如果想让节点既不称为主节点,又不成为数据节点,那么可将他作为搜索器,从节点中获取数据,生成搜索结果等 
+# node.master: false 
+# node.data: false
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

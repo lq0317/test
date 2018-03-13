@@ -1,0 +1,69 @@
+docker 镜像和仓库
+docker info 查看相关信息
+docker images 
+-a 显示所有镜像
+-f 显示过滤条件
+--no-trunc 没有截断信息
+-q 只显示id
+docker rmi 仓库名:tag名（可以跟多个） 或者 imageid
+-f 强制删除镜像
+docker rmi $(docker image -q 仓库名) 删除所有的
+docker获取和推送镜像
+1 docker hup （需要注册账户）官方仓库（https://registry.hub.docker.com）
+2 docker search 仓库名（一次最多返回25个结果）
+--automated 自动化
+--no-trunc 
+-s 星级查找
+docker pull 仓库名:镜像名字
+使用--registry-mirror选项可以加速访问拉取
+1 修改/etc/default/docker(docker配置文件)
+2 添加 DOCKER_OPTS="--registry-mirror=http://MIRROR-ADDR"
+docker push name:tag
+
+docker构建镜像
+1 docker commit 通过容器构建
+2 docker build 通过dockerfile文件构建
+docker commit 参数 container 仓库:tag
+-a 作者名字
+-m 构建信息
+-p 不暂停正在执行的容器
+docker build 参数 path|url （dockerfile的文件路劲）
+--force-rm=false
+--no-cache=false
+--pull=false
+-q，--quit（不会显示构建过程，中间层镜像）
+-rm=true
+-t --tag=“标签名字”（取一个构建后的名字）
+dockerfile指令
+格式
+指令：
+1 注释 
+2 from image （image:tag） 已经存在的镜像，基础镜像，必须是第一条非注释指令
+3 maintainer  所有者 联系信息
+4 run （指定当前镜像运行命令）
+1）run command （shell模式）
+2）run ["executable","param1","parma2"] （exec模式）
+5 expose 指定容器运行的端口（容器运行仍需要指定需要映射的端口）
+6 cmd指令 （会被命令行的命令替代）
+7 entrypoint （不会被运行命令的中的命令替代）
+8 add ["src"，"<dest>"] (适用于文件路劲中有空格的情况，地址可以为本地地址和远程url)
+包含类似tar的解压缩功能
+9 copy （和上面差不多，直接复制）
+10 volume["/data"] 
+11 workdir /path/to/workdir （命令运行的路劲，需要绝对路劲）
+12 env 设置环境变量
+13 user 运行用户（uid，用户组，gid等组合也行）
+14 unbuild 镜像触发器（镜像被其他镜像作为基础镜像时执行，会在构建过程中插入指令）
+dockerfile构建镜像过程
+1 从基础镜像运行一个容器
+2 执行一条指令，对容器做出修改
+3 执行类似docker commit的操作，提交一个新的镜像层
+4 再基于刚提交的镜像运行一个新容器
+5 执行dockerfile中的下一条指令，直至所有指令执行完毕
+会生成中间层镜像（用来排查错误）
+
+构建缓存
+1 上一次生成的镜像会生成缓存
+2 docker build --no-cache 会跳过缓存 （可以修改env参数，刷新缓存）
+查看构建过程
+docker logs image

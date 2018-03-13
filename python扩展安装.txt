@@ -1,0 +1,195 @@
+﻿安装
+
+环境 
+系统为CentOS6.5
+python版本：2.7.8
+        下载
+        https://www.python.org/ftp/python/2.7.8/Python-2.7.8.tgz
+        #替换系统自带的Python，但CentOS的yum依赖于Python工作，
+        #为了保证yum的正常运行，我们要在替换前，先将自带的Python更名备份
+         mv /usr/bin/python /usr/bin/python-2.6.6
+        ln -s /usr/local/python/bin/python /usr/bin/python
+        mv /usr/bin/python-config /usr/bin/python-config2.6
+        ln -s /usr/local/python/bin/python2.7-config /usr/bin/python-config
+        
+        
+        编译安装
+        tar xzf Python-2.7.8.tgz
+        cd Python-2.7.8
+        ./configure --prefix=/usr/local/python
+        make
+        make install
+            
+        检查版本
+        python -V
+        /usr/bin/python-2.6.6 –V
+
+        yum配置修改
+        vi /usr/bin/yum
+        #!/usr/bin/python --> #!/usr/bin/python-2.6.6
+        
+安装扩展包
+        
+    #安装setup工具 （必装）
+    下载地址：
+    https://pypi.python.org/pypi/setuptools
+
+    tar xzf setuptools-18.5.tar.gz
+    cd setuptools-18.5
+    python setup.py install
+
+
+	安装时报错：RuntimeError: Compression requires the (missing) zlib module
+	解决方法：
+		1.安装zlib、zlib-devel
+		2.去到xxx/python-2.7.8---》make && make install（之前做的软链接依旧生效）
+		3.重新安装setuptools
+
+
+
+    #安装pip工具 （必装）
+    下载地址：
+    https://pypi.python.org/pypi/pip/9.0.1
+    
+    tar xzf pip-9.0.1.tar.gz
+    cd pip-9.0.1
+    python setup.py install
+  
+安装mysql和依赖
+yum install  mysql-server,mysql-devel openldap-devel
+ 
+cd ansible_ui
+    安装python扩展： pip install -r requirements.txt
+
+	pip install Django
+
+
+	安装过了pip，使用时报错说没有这个命令
+	解决方法：
+		vim /etc/profile
+		export PATH=$HOME/bin:/usr/local/python/bin:/usr/local/bin:$PATH
+		source /etc/profile
+
+	however the ssl module in Python is not available.
+	解决方法：
+		http://www.cnblogs.com/yuechaotian/archive/2013/06/03/3115472.html
+
+
+安装PIL支持
+        wget http://effbot.org/downloads/Imaging-1.1.7.tar.gz
+        tar -zxvf Imaging-1.1.7.tar.gz
+        cd Imaging-1.1.7
+        python setup.py install 
+    
+    * 配置数据库
+            vim desktop/core/internal/settings_local.py 
+
+    * 创建数据库
+            create database ansible CHARACTER SET utf8;
+            grant all on ansible.* to root@'localhost' identified by '******';
+
+    * 初始化数据库
+            源码目录
+            python manage.py schemamigration desktop.apps.account --init
+            python manage.py schemamigration desktop.apps.ansible --init
+            python manage.py schemamigration desktop.apps.host --init
+            python manage.py syncdb
+            python manage.py migrate ansible
+            python manage.py migrate account
+            python manage.py migrate host
+            python manage.py migrate kombu.transport.django
+            python manage.py migrate djcelery
+            python manage.py migrate guardian
+
+    * 配置celery
+            vim supervisord.conf
+            
+            [program:celeryd] #修改command中 python 和  ~   （python路径）
+
+    * 启动celery
+            supervisord -c supervisord.conf
+
+安装saltstack
+    只需要一台安装master即可，其他的全部安装minion.
+    中控机安装master
+    应用机器安装minion
+    
+    
+     安装salt-master
+        rpm -ivh http://mirrors.yun-idc.com/epel/6/x86_64/epel-release-6-8.noarch.rpm
+        yum update
+        yum install salt-master
+       修改master配置  
+        vi /etc/salt/master
+            file_roots:
+                base:
+                  - /srv/salt
+                  
+            file_recv: True
+            file_recv_max_size: 100
+        /etc/init.d/salt-master start
+     
+     
+     
+     安装salt-minion
+            rpm -ivh http://mirrors.yun-idc.com/epel/6/x86_64/epel-release-6-8.noarch.rpm
+            yum update
+            yum install salt-minion
+       修改minion配置  
+        vi /etc/salt/minion
+        master: 中控机ip
+        id: 当前应用机器ip 例：id: 192.168.7.7
+        master：后面跟空格，然后是master的ip。id：后面有个空格，千万别忘了，否则启动会报错：
+        /etc/init.d/salt-minion start
+        
+    在master端执行 #salt-key -L 
+    如果能发现我们的定义的minion id，那么说明，我们的master和minion安装均完成
+     执行#salt-key -a 192.168.7.7
+     确认 Y
+
+
+     
+     
+    
+配置
+    
+    vim desktop/core/internal/settings_local.py
+        修改 databases配置项中的 USER PASSWORD
+        修改COMPILEIP 与 CTRLIP 
+        #COMPILEIP为编译打包机IP CTRLIP为中控机
+
+    mkdir -p /pulish/
+    ln -s  /pulish/SRC   /var/cache/salt/master/minions/编译机器IP/files/src/buildtarget/
+    mkdir -p /srv/salt/_modules
+    mkdir -p /srv/salt/qbao
+    ln -s /srv/salt/qbao/pulish /pulish/
+    cd autodeploy
+    cp salt/salt.py /srv/salt/_modules/qbao.py
+    cp salt/maintain_app /srv/salt/qbao/maintain_app
+    向应用机器同步脚本
+    salt '*' saltutil.sync_all    
+    salt "应用ip" cp.get_file salt://qbao/maintain_app /usr/bin/maintain_app       
+        
+        
+
+Run
+=====
+* 直接运行
+        python manage.py runserver ip:8000
+
+访问web
+      http://ip:8000
+        
+
+
+        
+        
+长久运行
+* nginx + uwsgi
+
+        配置nginx: 参考nginx_ansible.cfg  
+        启动nginx
+        修改ansible.wsgi : yourvirtualenv 指向实际目录
+        修改ansible_uwsgi.ini : 修改相关配置
+        启动 uwsgi： uwsgi --ini ansible_uwsgi.ini -d ansible.log
+

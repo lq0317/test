@@ -1,0 +1,100 @@
+vrrp协议
+虚拟路由器冗余协议，vrrp出现是为了解决静态路由的单点故障，通过一种竞选协议机制来讲路由
+任务交给某台路由器
+通信方式：ip多播的方式
+vrrp使用了加密协议
+keepalived原理：Keepalived采用是模块化设计，不同模块实现不同的功能，keepalived主要有三个模块，分别
+是core、check和vrrp。 core：是keepalived的核心，负责主进程的启动和维护，全局配置文件的加载解析等 
+check： 负责healthchecker(健康检查)，包括了各种健康检查方式，以及对应的配置的解析包括LVS的配置解析；
+可基于脚本检查对IPVS后端服务器健康状况进行检查。 vrrp：VRRPD子进程，VRRPD子进程就是来实现VRRP协议的
+以上是主要组件；下面是其他库： libipfwc：iptables/ipchains库，配置LVS会用到 libipvs*：配置LVS会用到
+注意，keepalived和LVS完全是两码事，各司其职相互配合。（主节点会不断的向备节点广播心跳消息，告诉自己
+的状态，发生故障时，备节点无法检查到心跳，调用自身的程序接管主节点的ip资源和服务。当主节点恢复故障
+，备节点会释放主节点故障时接管的资源及服务器，恢复自身的备用角色）
+工作原理
+keepalived是一个类似于layer3, 4 & 5交换机制的软件，也就是第3层、第4层和第5层交换,分别工作在IP/TCP协
+议栈的IP层、TCP层、应用层，原理分别如下： Layer3： Keepalived使用Layer3的方式工作式时，Keepalived会
+定期向服务器群中的服务器发送一个ICMP的数据包（既Ping）,如果发现某台服务的IP地址没有激活，Keepalived
+便报告这台服务器失效，并将它从服务器群中剔除(这种情况的典型例子是某台服务器被非法关机)。Layer3方式是
+以服务器的IP地址是否有效作为服务器工作正常与否的标准。 Layer4: Layer4主要以TCP端口的状态来决定服务器
+工作正常与否。如web server的服务端口一般是80，如果Keepalived检测到80端口没有启动，则Keepalived将把这
+台服务器从服务器群中剔除。 Layer5： Layer5就是工作在具体的应用层了，比Layer3,Layer4要复杂，在网络上
+占用的带宽也要大一些。Keepalived将根据用户的设定检查服务器相应服务是否运行正常，如果没有正常运行，
+则Keepalived将把服务器从服务器群中剔除。
+
+keepalived安装
+https://github.com/acassen/keepalived/releases 自己找
+ln -s /usr/src/kernels/2.6.32-696.20.1.el6.x86_64/ /usr/src/linux
+yum -y install openssl* （openssl报错）
+yum -y install popt* （解决报错popt）
+yum install -y gcc openssl openssl-devel ipvsadm libnl-devel
+[root@django opt]# tar xf keepalived-1.3.2.tar.gz
+[root@django opt]# cd keepalived-1.3.2
+[root@django keepalived-1.3.2]# yum update glib* （可能是因为版本过高导致，低版本不需要这条）
+[root@django keepalived-1.3.2]# ./configure (--with-kernel-dir=/usr/src/kernels/3.10.5-3.el6.x86_64/ 带上参数可以不用ln -s
+ 。编译参数可以自己指定)_
+Use IPv4 devconf         : Yes
+Use libiptc              : Yes (这些yes是在结合lvs使用的时候需要用到)
+Use libipset             : Yes
+[root@django keepalived-1.3.2]# make && make install
+cp /opt/keepalived-1.3.2/keepalived/etc/rc.d/init.d/keepalived /etc/init.d/ （生成脚本启动命令）
+cp /opt/keepalived-1.3.2/keepalived/etc/sysconfig/keepalived  /etc/sysconfig/ （生成脚本启动参数
+mkdir /etc/keepalived （创建配置文件目录）
+cp /opt/keepalived-1.3.2/keepalived/etc/keepalived/keepalived.conf /etc/keepalived/
+/etc/init.d/keepalived start
+[root@django keepalived-1.3.2]# ps -ef |grep keepalived   （发现三个-D成功）
+root      1123     1  0 17:13 ?        00:00:00 keepalived -D
+root      1124  1123  0 17:13 ?        00:00:00 keepalived -D
+root      1125  1123  0 17:13 ?        00:00:00 keepalived -D
+root      1654  9258  0 17:16 pts/0    00:00:00 grep keepalived
+[root@django keepalived-1.3.2]# /etc/init.d/keepalived stop
+
+keepalived日志默认在/var/log/message
+添加日志接受路劲
+vi /etc/sysconfig/keepalived
+KEEPALIVED_OPTIONS="-D -d -S 0" (最后换成这行)
+echo "local0.*          /var/log/keepalived.log" >> /etc/rsyslog.conf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

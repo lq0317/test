@@ -1,0 +1,51 @@
+nginx安装配置
+https://sourceforge.net/projects/pcre/files/pcre 下载pcre安装包
+wget https://sourceforge.net/projects/pcre/files/pcre/8.40/pcre-8.40.tar.gz
+http://nginx.org/
+wget http://nginx.org/download/nginx-1.12.2.tar.gz （安装稳定版stable）
+yum -y install gcc pcre pcre-devel zlib zlib-devel openssl openssl-devel （上面的这个适合nginx，下面的适合php）
+yum install -y gcc gdb strace gcc-c++ autoconf libjpeg libjpeg-devel libpng libpng-devel freetype freetype-devel libxml2 libxml2-devel zlib zlib-devel glibc glibc-devel glib2 glib2-devel bzip2 bzip2-devel ncurses ncurses-devel curl curl-devel e2fsprogs patch e2fsprogs-devel krb5-devel libidn libidn-devel openldap-devel nss_ldap openldap-clients openldap-servers libevent-devel libevent uuid-devel uuid mysql-devel
+--prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --modules-path=/usr/lib64/nginx/modules --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/run/nginx.lock --http-client-body-temp-path=/var/cache/nginx/client_temp --http-proxy-temp-path=/var/cache/nginx/proxy_temp --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp --http-scgi-temp-path=/var/cache/nginx/scgi_temp --user=nginx --group=nginx --with-compat --with-file-aio --with-threads --with-http_addition_module --with-http_auth_request_module --with-http_dav_module --with-http_flv_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_mp4_module --with-http_random_index_module --with-http_realip_module --with-http_secure_link_module --with-http_slice_module --with-http_ssl_module --with-http_stub_status_module --with-http_sub_module --with-http_v2_module --with-mail --with-mail_ssl_module --with-stream --with-stream_realip_module --with-stream_ssl_module --with-stream_ssl_preread_module --with-cc-opt='-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m64 -mtune=generic -fPIC' --with-ld-opt='-Wl,-z,relro -Wl,-z,now -pie'
+也可以源码安装pcre
+上传pcre-8.12.tar.gz, nginx-1.5.0.tar.gz 到 /usr/local/src/nginx目录下
+3）解压pcre-8.12.tar.gz
+# cd /usr/local/src/nginx
+# tar zxvf pcre-8.12.tar.gz
+4）进入解压后的目录
+# cd pcre-8.12 
+5）配置
+#  ./configure
+6) 编译
+#  make
+7) 安装
+#  make install
+安装nginx
+# groupadd www #添加www组 
+# useradd -g www www -s /bin/false #创建nginx运行账户www并加入到www组，不允许www用户直接登录系统
+创建安装目录与日志目录
+a) 安装目录
+# mkdir /usr/local/nginx
+b) 日志目录
+# mkdir /data/logs/nginx
+# chown www:www /data/logs/nginx -R
+2) 解压
+# cd /usr/local/src/nginx
+# tar zxvf nginx-1.5.0.tar.gz
+3) 进入目录
+# cd nginx-1.5.0
+./configure --user=www --group=www --prefix=/usr/local/nginx --with-http_stub_status_module --with-http_ssl_module --with-http_realip_module
+上面的编译参数通用（路劲需要自己定义）
+5）编译
+# make
+6)  安装
+#  make install
+7)  检查是否安装成功
+# cd  /usr/local/nginx/sbin
+# ./nginx -t 
+结果显示：
+nginx: the configuration file /usr/local/nginx/conf/nginx.conf syntax is ok
+nginx: configuration file /usr/local/nginx/conf/nginx.conf test is successful
+
+全局错误日志定义类型，[ debug | info | notice | warn | error | crit] 也可以定义json等日志
+
+

@@ -1,0 +1,44 @@
+﻿zabbix客户端安装
+zabbix-2.2.6
+http://jaist.dl.sourceforge.net/project/zabbix/ZABBIX%20Latest%20Stable/2.2.6/zabbix-2.2.6.tar.gz
+上传zabbix-2.2.6.tar.gz到服务器/usr/local/src目录下面
+groupadd zabbix
+useradd zabbix -g zabbix
+cd /usr/local/src #进入软件包下载目录
+tar zxvf zabbix-2.2.6.tar.gz #解压
+cd /usr/local/src/zabbix-2.2.6 #进入安装目录
+./configure --prefix=/usr/local/zabbix --enable-agent
+make && make install
+3）添加服务端口和修改启动脚本
+vi /etc/services #编辑，在最后添加以下代码
+# Zabbix
+zabbix-agent 10050/tcp # Zabbix Agent
+zabbix-agent 10050/udp # Zabbix Agent
+zabbix-trapper 10051/tcp # Zabbix Trapper
+zabbix-trapper 10051/udp # Zabbix Trapper
+cp /usr/local/src/zabbix-2.2.6/misc/init.d/fedora/core/zabbix_agentd /etc/rc.d/init.d/zabbix_agentd 
+chmod +x /etc/rc.d/init.d/zabbix_agentd #添加脚本执行权限
+vi /etc/rc.d/init.d/zabbix_agentd #编辑客户端配置文件
+修改BASEDIR=/usr/local/zabbix/ #zabbix安装目录
+chkconfig zabbix_agentd on #添加开机启动
+4）修改zabbix_agent配置文件
+vim /usr/local/zabbix/etc/zabbix_agentd.conf
+Server=192.168.100.230 #服务器端的IP
+ServerActive=192.168.100.230 #服务器端的IP
+Hostname=客户端ip #agent主机名
+Include=/usr/local/zabbix/etc/zabbix_agentd.conf.d/  #扩展配置目录
+5）启动
+/etc/init.d/zabbix_agentd start
+报错的话
+/usr/sbin/zabbix_agentd: error while loading shared libraries: libodbc.so.2: cannot open shared object file: No such file or directory
+yum -y install unixODBC 不行的话需要echo /usr/local/lib >> /etc/ld.so.conf 然后执行ldconfig
+6）在防火墙上开启相应端口
+vi /etc/sysconfig/iptables
+添加：
+   -A INPUT -m state --state NEW -m tcp -p tcp --dport 10050 -j ACCEPT
+   -A INPUT -m state --state NEW -m tcp -p tcp --dport 10051 -j ACCEPT
+重启防火墙：
+service iptables restart
+ 7）测试
+ 下面的命令需要在server端执行，其中192.168.1.21是agent的ip
+#/usr/local/zabbix/bin/zabbix_get -s192.168.1.21 -p10050 -k"system.uptime"

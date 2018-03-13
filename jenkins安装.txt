@@ -1,0 +1,29 @@
+jenkins安装
+准备环境 jdk1.8 tomcat8
+github上面有，或者去官网下载
+安装jdk
+tar xf jdk-8u161-linux-x64.tar.gz
+vi /etc/profile (最后添加三行)
+export JAVA_HOME=/opt/jdk1.8.0_161/
+export PATH=$JAVA_HOME/bin:$PATH
+export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+source /etc/profile
+安装tomcat
+tar xf apache-tomcat-8.0.50.tar.gz
+/opt/apache-tomcat-8.0.50/bin/startup.sh （启动）
+cd /opt/apache-tomcat-8.0.50/webapps/ROOT/
+rm -rf *
+rz jenkins.war （需要上传war包，自己下载）
+/opt/apache-tomcat-8.0.50/
+more /opt/apache-tomcat-8.0.50/logs/catalina.out （有问题自己查看日志）
+访问
+http://117.50.11.124:8080/
+首次需要输入密码
+cat /root/.jenkins/secrets/initialAdminPassword (然后复制粘贴)
+选着第一个安装
+输入用户 密码 确认密码 项目名字（可以随意） 邮件地址 
+继续使用admin
+
+配置jenkin需要maven
+wget http://mirrors.hust.edu.cn/apache/maven/maven-3/3.5.3/binaries/apache-maven-3.5.3-bin.tar.gz
+tar xf apache-maven-3.5.3-bin.tar.gz
