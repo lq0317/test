@@ -1,0 +1,87 @@
+saltstack
+底层是基于zeromq搭建的
+master上面有pub minion有sub
+安装
+4505是zeromq的端口，需要通过这个连接
+首先需要安装epel源，安装方式自己选择
+rpm -qa|grep epel （有的话不需要安装）
+yum -y install epel*
+安装master
+yum -y install salt-master （服务端安装）
+yum -y install salt-minion  （客户端安装）
+minion修改配置文件
+master ： 192.160.100.230 （变更为自己的master）
+/etc/init.d/salt-master start
+/etc/init.d/salt-minion start
+
+数据传输才用aes加密
+keys默认存在在/etc/salt/pki
+命令：
+salt-key -L（列出当前所有的key）
+salt-key -a  (接受minion的key -A 接受所有的key)
+salt-key -d （删除某人minion的key -D 删除所有key）
+salt "*" cmd.run "echo hello world" （远程执行minion命令）
+salt "*" test.ping （测试和minion连通性）
+
+grains （可以用于minion信息查询，target，配置管理模板）
+1用于存储minion的基本数据信息
+2元数据存储在minion端
+salt "*" grains.items
+salt "*" grains.item path (取单个信息，item可以换成get)
+[root@django minions_pre]# salt "*" grains.item ip_interfaces:eth0
+guanggao:
+    ----------
+    ip_interfaces:eth0:
+        - 192.168.100.231
+        - fe80::250:56ff:fe9f:3a74
+salt "*" grains.item mem_total （查看minons内存）
+
+pillar
+1存储在master端，存放需要提供给minion的信息
+2用于存储master分配给minion的数据信息
+3元数据存在master端
+应用场景：
+敏感信息：每个minion只能给访问master分配给自己的pillar信息
+变量：差异化的信息等
+可以再target及state中使用
+salt "*" saltutil.refresh_pillar （刷新客户端pillar缓存）
+salt "*" pillar.items （如果没有结果返回，需要配置文件对应改成打开pillar_opts: True，重启）
+salt -E “target正则” 模块.方法 参数 （可以使用正则）
+salt -L "list" test.ping (可以使用列表)
+salt -G 'os:CentOS' test.ping （可以使用grains）
+salt -I  'role:web' pkg.install httpd （可以使用pillar）
+salt -C 'G@os:CentOS and 192.168.100.230' test.ping (混合使用and，or)
+salt -N 'web-cluster' -b 20% service.restart apache (重启百分之20的web-cluster集群minions的apache)
+默认会加载/etc/salt/master.d/*.conf不需要重启
+salt -N web-cluster test.ping  (在master.d/下面创建)
+
+
+salt '*' pkg.install httpd （安装http服务）
+salt '*' cp.get_file salt://httpd.conf /etc/httpd/conf/httpd.conf （传送文件过去）
+salt-cp '*' /tmp/httpd.conf  /etc/httpd/conf/httpd.conf  （可以发送别的路劲文件）
+salt '*' service.start httpd （启动服务）
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
