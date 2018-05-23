@@ -47,7 +47,7 @@ http.port: 9200
 discovery.zen.ping.unicast.hosts: ["192.168.100.232", "192.168.100.233","192.168.100.234"]  (设置自动发现节点) 
 discovery.zen.minimum_master_nodes: 3 （设置可以拥有几个节点）
 http.cors.enabled: true					（跨域，不然在head上面访问会发现集群未连接）
-http.cors.allow-origin: "
+http.cors.allow-origin: "*"
 su es
 cd /opt/elasticsearch-6.0.0
 ./bin/elasticsearch -d
@@ -97,7 +97,7 @@ http.port: 9200
 discovery.zen.ping.unicast.hosts: ["192.168.100.232", "192.168.100.233","192.168.100.234"]  (设置自动发现节点，也可以只在一台服务器上面设置，但是服务器挂了不能发现) 
 discovery.zen.minimum_master_nodes: 3 （设置可以拥有几个节点）
 http.cors.enabled: true					（跨域，不然在head上面访问会发现集群未连接）
-http.cors.allow-origin: "
+http.cors.allow-origin: "*"
 
 跨域的问题
 http.cors.enabled	是否支持跨域，默认为false
